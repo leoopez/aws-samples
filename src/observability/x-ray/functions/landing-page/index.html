@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta charset="UTF-8">
+    <title>DogsBook</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #fff;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            gap: 20px;
+        }
+
+        .image {
+            width: 200px;
+            height: 200px;
+            overflow: hidden;
+            margin: 0 auto;
+            margin-bottom: 20px;
+        }
+</style>
+</head>
+<body>
+    <h1>Welcome to DogsBook</h1>
+    <p>A AWS Sample to view X Ray implementation.</p>
+        <form id="form">
+            <div class="form">
+                <h3>Add Dog</h3>
+                <input type="text" name="dogName" placeholder="Dog Name">
+                <input type="text" name="dogBreed" placeholder="Dog Breed">
+                <input type="text" name="dogAge" placeholder="Dog Age">
+                <input disabled type="text" name="dogImage" placeholder="Dog Image" id="inputDogURLValue">
+                <button type="button" id="addImage">Change Image</button>
+                <img id="dogImage" class="image" src="" alt="Click to button to change Image">
+                <button type="submit">Submit</button>
+            </div> 
+        </form>
+        <script>
+            const dogApi = "https://dog.ceo/api/breeds/image/random";
+            // Documents
+            const image = document.getElementById('dogImage');
+            const form = document.getElementById("form");
+            const addButton = document.getElementById("addImage");
+            const inputDogURLValue = document.getElementById("inputDogURLValue");
+
+            // Listeners
+            form.addEventListener("submit", function (e) {
+                e.preventDefault();
+                const body = {
+                    name: data.get('dogName'),
+                    breed: data.get('dogBreed'),
+                    age: data.get('dogAge'),
+                    image: data.get('dogImage')
+                }
+
+                postDog(body);
+            });
+
+            addButton.addEventListener("click", function (e) {
+                readImage();
+            });
+
+            // Functions
+            const readImage = async () => {
+                const imageResponse = await fetch(dogApi);
+                const image = await imageResponse.json();
+                dogImage.src = image.message;
+                inputDogURLValue.value = image.message;
+            }
+
+                const postDog = async (body) => {
+                const response = await fetch(`${window.location.host}/test/validate-dog`, {
+                    method: 'POST',
+                    body: JSON.stringify(body),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }); 
+            }
+        </script>
+    </body>
+</html>
+ 
