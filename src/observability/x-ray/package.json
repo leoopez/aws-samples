@@ -4,11 +4,11 @@
   "description": "AWS samples organized by category",
   "main": "index.js",
   "scripts": {
-    "build-landing-page": "esbuild functions/landing-page/index.js --bundle --asset-names=assets/[name] --loader:.html=file --platform=node --outfile=build/landing-page/index.js",
     "build-add-dog": "esbuild functions/add-dog/index.js --bundle --platform=node --outfile=build/add-dog/index.js",
     "build-validate-dog": "esbuild functions/validate-dog/index.js --bundle --platform=node --outfile=build/validate-dog/index.js",
     "build-get-dogs": "esbuild functions/get-dogs/index.js --bundle --platform=node --outfile=build/get-dogs/index.js",
-     "build": "npm run build-landing-page && npm run build-add-dog && npm run build-validate-dog && npm run build-get-dogs"
+    "build-custom-function": "esbuild functions/custom-function/index.js --bundle --platform=node --outfile=build/custom-function/index.js",
+    "build": "npm run build-add-dog && npm run build-validate-dog && npm run build-get-dogs && npm run build-custom-function"
   },
   "repository": {
     "type": "git",
@@ -22,9 +22,20 @@
   "homepage": "https://github.com/leoopez/aws-samples#readme",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.490.0",
-    "@aws-sdk/client-sqs": "^3.490.0"
+    "@aws-sdk/client-s3": "^3.496.0",
+    "@aws-sdk/client-sqs": "^3.490.0z",
+    "decompress": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "esbuild": "^0.19.11"
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "esbuild": "^0.19.11",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5"
   }
 }

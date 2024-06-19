@@ -3,31 +3,46 @@ set -eo pipefail
 
 echo Create S3 bucket
 
-ID=$RANDOM
-X_RAY_S3_BUCKET_NAME=x-ray-aws-sample-$RANDOM-$RANDOM
-X_RAY_S3_BUCKET_LOCATION=$(aws s3api create-bucket --bucket $X_RAY_S3_BUCKET_NAME --region us-west-1  --create-bucket-configuration LocationConstraint=us-west-1 --query 'Location' --output text)
+ID=$RANDOM-$RANDOM
+SOURCE_BUCKET_NAME=x-ray-sample-$ID
+# LANDING_PAGE_BUCKET_NAME=x-ray-aws-sample-landig-page-$ID
 
-echo $X_RAY_S3_BUCKET_NAME > bucket-name.txt
+BUFFER=$(aws s3api create-bucket --bucket $SOURCE_BUCKET_NAME --region us-west-1  --create-bucket-configuration LocationConstraint=us-west-1 --query 'Location' --output text)
+# BUFFER=$(aws s3api create-bucket --bucket $LANDING_PAGE_BUCKET_NAME --region us-west-1  --create-bucket-configuration LocationConstraint=us-west-1 --query 'Location' --output text)
 
-echo Create Bundle for Lambdas
+echo $SOURCE_BUCKET_NAME > source-bucket-name.txt
+
+echo Create Bundle for Lambdas \& Landing Page
+npm install
 npm run build
 
-cd ./build/landing-page
-zip -r landing-page.zip .
-cd ../add-dog
+mkdir -p ./build/custom-function && cp  ./functions/custom-function/index.js ./build/custom-function/index.js
+cd ./build/add-dog
 zip -r add-dog.zip .
 cd ../validate-dog
 zip -r validate-dog.zip .
 cd ../get-dogs
 zip -r get-dogs.zip .
-cd ../../
+cd ../custom-function
+zip -r custom-function.zip .
 
-if [ -f bucket-name.txt ]; then
-    ARTIFACT_BUCKET=$(cat bucket-name.txt)
-    BUFFER=$(aws s3api put-object --bucket $ARTIFACT_BUCKET --key landing-page-$ID.zip --body ./build/landing-page/landing-page.zip)
-    BUFFER=$(aws s3api put-object --bucket $ARTIFACT_BUCKET --key add-dog-$ID.zip --body ./build/add-dog/add-dog.zip)
-    BUFFER=$(aws s3api put-object --bucket $ARTIFACT_BUCKET --key validate-dog-$ID.zip --body ./build/validate-dog/validate-dog.zip)
-    BUFFER=$(aws s3api put-object --bucket $ARTIFACT_BUCKET --key get-dogs-$ID.zip --body ./build/get-dogs/get-dogs.zip)
-fi
+cd ../../dist
+zip -r dist.zip .
+cd ..
 
-aws cloudformation deploy  --template-file template.yml --parameter-overrides S3BucketLambdasLocation=$ARTIFACT_BUCKET S3KeyLandingPage=landing-page.zip S3KeyAddDog=add-dog-$ID.zip S3KeyValidateDog=validate-dog-$ID.zip S3KeyGetDogs=get-dogs-$ID.zip --stack-name x-ray-aws-sample --capabilities CAPABILITY_IAM
+
+BUFFER=$(aws s3api put-object --bucket $SOURCE_BUCKET_NAME --key custom-function.zip --body ./build/custom-function/custom-function.zip)
+BUFFER=$(aws s3api put-object --bucket $SOURCE_BUCKET_NAME --key add-dog.zip --body ./build/add-dog/add-dog.zip)
+BUFFER=$(aws s3api put-object --bucket $SOURCE_BUCKET_NAME --key validate-dog.zip --body ./build/validate-dog/validate-dog.zip)
+BUFFER=$(aws s3api put-object --bucket $SOURCE_BUCKET_NAME --key get-dogs.zip --body ./build/get-dogs/get-dogs.zip)
+BUFFER=$(aws s3api put-object --bucket $SOURCE_BUCKET_NAME --key dist.zip --body ./dist/dist.zip)
+
+
+aws cloudformation deploy  --template-file template.yml --parameter-overrides \
+    S3BucketLambdasLocation=$SOURCE_BUCKET_NAME \
+    S3KeyLandingPage=dist.zip \
+    S3KeyAddDog=add-dog.zip \
+    S3KeyValidateDog=validate-dog.zip \
+    S3KeyGetDogs=get-dogs.zip \
+    S3KeyCustomFunction=custom-function.zip \
+    --stack-name x-ray-sample --capabilities CAPABILITY_IAM

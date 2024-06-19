@@ -1,5 +1,5 @@
-AWSTemplateFormatVersion: '2010-09-09'
-
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
 Parameters:
   S3BucketLambdasLocation:
     Type: String
@@ -16,9 +16,12 @@ Parameters:
   S3KeyGetDogs:
     Type: String
     Description: Enter S3 Key of get dog lambda zip.
-  
+  S3KeyCustomFunction:
+    Type: String
+    Description: Enter S3 Key of custom function zip.
+
 Resources:
-  LandingPageFunctionRole:
+  ValidateDogFunctionRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
@@ -31,34 +34,19 @@ Resources:
               Service:
                 - lambda.amazonaws.com
             Action:
-              - 'sts:AssumeRole'
-
-  ValidateDogFunctionRole:
-      Type: AWS::IAM::Role
-      Properties:
-        ManagedPolicyArns:
-          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - lambda.amazonaws.com
-              Action:
-                - 'sts:AssumeRole'
-        Policies:
-          - PolicyName: LambdaSQSPolicy
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Sid: SQSAccess
-                  Effect: Allow
-                  Action:
-                    - sqs:SendMessage
-                    - sqs:GetQueueUrl
-                  Resource: 
-                    - '*'
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: LambdaSQSPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SQSAccess
+                Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueUrl
+                Resource:
+                  - "*"
 
   GetDogsFunctionRole:
     Type: AWS::IAM::Role
@@ -66,16 +54,16 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - lambda.amazonaws.com
-              Action:
-                - 'sts:AssumeRole'
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
       Policies:
-        - PolicyName: LambdaSQSPolicy
+        - PolicyName: LambdaDynamoPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -85,9 +73,9 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:Scan
                   - dynamodb:GetItem
-                Resource: 
-                  - '*'
-  
+                Resource:
+                  - "*"
+
   AddDogFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -101,7 +89,7 @@ Resources:
               Service:
                 - lambda.amazonaws.com
             Action:
-              - 'sts:AssumeRole'
+              - "sts:AssumeRole"
       Policies:
         - PolicyName: LambdaSQSPolicy
           PolicyDocument:
@@ -117,35 +105,28 @@ Resources:
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
-                Resource: 
-                  - '*'
-
-  LandingPageFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code: 
-        S3Bucket : !Ref S3BucketLambdasLocation
-        S3Key : !Ref S3KeyLandingPage
-      Handler: index.handler
-      Runtime: nodejs18.x
-      Role: !GetAtt LandingPageFunctionRole.Arn
+                Resource:
+                  - "*"
 
   GetDogsFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Code: 
-        S3Bucket : !Ref S3BucketLambdasLocation
-        S3Key : !Ref S3KeyGetDogs
+      Code:
+        S3Bucket: !Ref S3BucketLambdasLocation
+        S3Key: !Ref S3KeyGetDogs
       Handler: index.handler
       Runtime: nodejs18.x
       Role: !GetAtt GetDogsFunctionRole.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref DogDynamoDBTable
 
   ValidateDogFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Code: 
-        S3Bucket : !Ref S3BucketLambdasLocation
-        S3Key : !Ref S3KeyValidateDog
+      Code:
+        S3Bucket: !Ref S3BucketLambdasLocation
+        S3Key: !Ref S3KeyValidateDog
       Handler: index.handler
       Runtime: nodejs18.x
       Role: !GetAtt ValidateDogFunctionRole.Arn
@@ -156,9 +137,9 @@ Resources:
   AddDogFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Code: 
-        S3Bucket : !Ref S3BucketLambdasLocation
-        S3Key : !Ref S3KeyAddDog
+      Code:
+        S3Bucket: !Ref S3BucketLambdasLocation
+        S3Key: !Ref S3KeyAddDog
       Handler: index.handler
       Runtime: nodejs18.x
       Role: !GetAtt AddDogFunctionRole.Arn
@@ -167,7 +148,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref DogDynamoDBTable
-  
+
   AddDogFunctionEventSourceMapping:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
@@ -208,27 +189,7 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValidateDogFunction.Arn}/invocations"
-        TimeoutInMillis: 29000
-
-  LandingDogsApiResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref DogsApiGateway
-      ParentId: !GetAtt DogsApiGateway.RootResourceId
-      PathPart: landing
-
-  LandingPageMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref DogsApiGateway
-      ResourceId: !Ref LandingDogsApiResource
-      AuthorizationType: NONE
-      HttpMethod: GET
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LandingPageFunction.Arn}/invocations"
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValidateDogFunction.Arn}/invocations"
         TimeoutInMillis: 29000
 
   GetDogsApiResource:
@@ -248,22 +209,14 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetDogsFunction.Arn}/invocations"
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetDogsFunction.Arn}/invocations"
         TimeoutInMillis: 29000
- 
-  ApiGatewayLandingPageFunctionInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt  LandingPageFunction.Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DogsApiGateway}/*/*/*"
 
   ApiGatewayGetDogsFunctionInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt  GetDogsFunction.Arn
+      FunctionName: !GetAtt GetDogsFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DogsApiGateway}/*/*/*"
 
@@ -275,36 +228,57 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DogsApiGateway}/*/*/*"
 
-  DogDynamoDBTable: 
-      Type: AWS::DynamoDB::Table
-      Properties: 
-        AttributeDefinitions: 
-          - AttributeName: "Name"
-            AttributeType: "S"
-          - AttributeName: "Breed"
-            AttributeType: "S"
-        KeySchema: 
-          - AttributeName: "Name"
-            KeyType: "HASH"
-          - AttributeName: "Breed"
-            KeyType: "RANGE"
-        ProvisionedThroughput: 
-          ReadCapacityUnits: "4"
-          WriteCapacityUnits: "4"
-        TableName: DogsTable
-  
+  DogDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "Name"
+          AttributeType: "S"
+        - AttributeName: "Breed"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "Name"
+          KeyType: "HASH"
+        - AttributeName: "Breed"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "4"
+        WriteCapacityUnits: "4"
+      TableName: DogsTable
+
   MessageQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: AddDogQueue
-        DelaySeconds: 0
-        VisibilityTimeout: 30
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: AddDogQueue
+      DelaySeconds: 0
+      VisibilityTimeout: 30
 
   MessageDeadLetterQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: AddDogDeadLetterQueue
-        DelaySeconds: 0
-        VisibilityTimeout: 30
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: AddDogDeadLetterQueue
+      DelaySeconds: 0
+      VisibilityTimeout: 30
 
-  
+  LandingDogsApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref DogsApiGateway
+      ParentId: !GetAtt DogsApiGateway.RootResourceId
+      PathPart: landing
+
+  LandingPageMethod:
+    DependsOn:
+      - S3CustomResource
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref DogsApiGateway
+      ResourceId: !Ref LandingDogsApiResource
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: GET
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:s3:path/${LandingPageBucket}/static/landing-page/index.html
+        TimeoutInMillis: 29000
+        Credentials: !GetAtt GetS3BucketRole.Arn
