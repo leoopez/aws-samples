@@ -240,11 +240,11 @@ Mappings:
       HVM64: ami-6b6a7d09
       HVMG2: NOT_SUPPORTED
 Resources:
-  WebserverInstanceKeyPair:
+  KeyPair:
     Type: "AWS::EC2::KeyPair"
     Properties:
       KeyName: new-key-pair
-  WebServerInstance:
+  Instance:
     Type: "AWS::EC2::Instance"
     Metadata:
       "AWS::CloudFormation::Init":
@@ -265,8 +265,8 @@ Resources:
           - Arch
       InstanceType: !Ref InstanceType
       SecurityGroups:
-        - !Ref WebServerSecurityGroup
-      KeyName: !Ref WebserverInstanceKeyPair
+        - !Ref SecurityGroup
+      KeyName: !Ref KeyPair
       UserData: !Base64
         "Fn::Join":
           - ""
@@ -278,12 +278,12 @@ Resources:
             - "/opt/aws/bin/cfn-init "
             - "         --stack "
             - !Ref "AWS::StackName"
-            - "         --resource WebServerInstance "
+            - "         --resource Instance "
             - "         --configsets CreateFile "
             - "         --region "
             - !Ref "AWS::Region"
             - |+
-  WebServerSecurityGroup:
+  SecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupDescription: Enable HTTP access via port 80
@@ -299,10 +299,10 @@ Resources:
 Outputs:
   InstanceId:
     Description: InstanceId of the newly created EC2 instance
-    Value: !GetAtt WebServerInstance.InstanceId
+    Value: !GetAtt Instance.InstanceId
   PublicDnsName:
     Description: URL for newly created LAMP stack
-    Value: !GetAtt WebServerInstance.PublicDnsName
+    Value: !GetAtt Instance.PublicDnsName
   KeyPaidId:
     Description: KeyPair ID of the newly created EC2 instance
-    Value: !GetAtt WebserverInstanceKeyPair.KeyPairId
+    Value: !GetAtt KeyPair.KeyPairId
