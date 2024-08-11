@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  This template creates an EC2 instance with a customized AMI.
+Mappings:
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0ff8a91507f77f867
+    us-west-2:
+      HVM64: ami-a0cfeed8
+    us-west-1:
+      HVM64: ami-0bdb828fd58c52235
+    eu-west-1:
+      HVM64: ami-047bb4163c506cd98
+    eu-west-2:
+      HVM64: ami-f976839e
+    eu-west-3:
+      HVM64: ami-0ebc281c20e89ba4b
+    eu-central-1:
+      HVM64: ami-0233214e13e500f77
+    ap-northeast-1:
+      HVM64: ami-06cd52961ce9f0d85
+    ap-northeast-2:
+      HVM64: ami-0a10b2721688ce9d2
+    ap-northeast-3:
+      HVM64: ami-0d98120a9fb693f07
+    ap-southeast-1:
+      HVM64: ami-08569b978cc4dfa10
+    ap-southeast-2:
+      HVM64: ami-09b42976632b27e9b
+    ap-south-1:
+      HVM64: ami-0912f71e06545ad88
+      HVMG2: ami-097b15e89dbdcfcf4
+    us-east-2:
+      HVM64: ami-0b59bfac6be064b78
+    ca-central-1:
+      HVM64: ami-0b18956f
+    sa-east-1:
+      HVM64: ami-07b14488da8ea02a0
+    cn-north-1:
+      HVM64: ami-0a4eaf6c4454eda75
+    cn-northwest-1:
+      HVM64: ami-6b6a7d09
+Resources:
+  KeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: new-key-pair
+  Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref "AWS::Region"
+        - HVM64
+      InstanceType: t2.small
+      SecurityGroups:
+        - !Ref SecurityGroup
+      KeyName: !Ref KeyPair
+      UserData: !Base64 |-
+        #!/bin/bash
+        sudo yum -y update
+        sudo yum -y upgrade
+        sudo yum install -y docker
+        sudo service docker start
+        sudo usermod -a -G docker ec2-user
+  SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable HTTP access via port 80
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  NoRootVolume:
+    Type: "AWS::EC2::Volume"
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Encrypted: true
+      Size: 1
+      VolumeType: gp3
+Outputs:
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value: !GetAtt Instance.InstanceId
+  PublicDnsName:
+    Description: URL for newly created LAMP stack
+    Value: !GetAtt Instance.PublicDnsName
+  KeyPaidId:
+    Description: KeyPair ID of the newly created EC2 instance
+    Value: !GetAtt KeyPair.KeyPairId
