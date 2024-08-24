@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to create an EC2 instance
+
+Parameters:
+  ImageId:
+    Type: "AWS::EC2::Image::Id"
+    Description: Image ID of the EC2 instance
+
+Resources:
+  MyEC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: t2.micro
+      ImageId: !Ref ImageId
+  KeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: new-key-pair
+  SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable HTTP access via port 80
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+Outputs:
+  InstanceId:
+    Description: The Instance ID
+    Value: !Ref MyEC2Instance
+  PublicIP:
+    Description: The public IP address of the instance
+    Value: !GetAtt MyEC2Instance.PublicIp
+  KeyPaidId:
+    Description: KeyPair ID of the newly created EC2 instance
+    Value: !GetAtt KeyPair.KeyPairId
